@@ -25,6 +25,7 @@ class _SignupPageState extends State<SignupPage> {
       );
 
       final userId = response.user?.id;
+      print("***** user id ${userId}");
       if (userId != null) {
         final existingProfile = await Supabase.instance.client
             .from('profiles')
@@ -37,6 +38,13 @@ class _SignupPageState extends State<SignupPage> {
             'id': userId,
             'matricule': matricule,
           });
+        }else{
+          final existingMatricule = existingProfile['matricule'] as String? ?? '';
+          if (existingMatricule.isEmpty || existingMatricule != matricule) {
+            await Supabase.instance.client.from('profiles')
+                .update({'matricule': matricule})
+                .eq('id', userId);
+          }
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
