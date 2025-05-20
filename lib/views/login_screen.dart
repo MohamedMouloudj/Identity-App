@@ -6,12 +6,11 @@ import '../services/supabase_service.dart';
 import 'signup_screen.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'home_screen.dart';
+
 Future<void> playSuccessSound() async {
   final player = AudioPlayer();
   await player.play(AssetSource('sounds/success.mp3'));
 }
-
-
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -24,7 +23,6 @@ class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
-  // Replace these with your actual Google OAuth client IDs
   static const _webClientId = '576180003187-lm0096po53lvplidutctanbdqqnvol0f.apps.googleusercontent.com';
   static const _iosClientId = '576180003187-fgubv3mi386mn98vusnvt5hudr8i6o7e.apps.googleusercontent.com';
   static const _androidClientId = '576180003187-b90hqlci1ljt0cb8dv4mejsloqjs94vk.apps.googleusercontent.com';
@@ -32,27 +30,20 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> signInWithGoogle() async {
     try {
       final googleSignIn = GoogleSignIn(
-        // Use the appropriate clientId for each platform
         clientId: Platform.isIOS ? _iosClientId : _androidClientId,
-        serverClientId: _webClientId, // For server-side token verification (if needed)
+        serverClientId: _webClientId,
       );
 
       final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
-        // User cancelled the sign-in flow
-        return;
-      }
+      if (googleUser == null) return;
 
       final googleAuth = await googleUser.authentication;
 
       final accessToken = googleAuth.accessToken;
       final idToken = googleAuth.idToken;
 
-      if (accessToken == null || idToken == null) {
-        throw Exception('Missing Google tokens');
-      }
+      if (accessToken == null || idToken == null) throw Exception('Missing Google tokens');
 
-      // Sign in to Supabase using the Google tokens
       final res = await Supabase.instance.client.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
@@ -71,7 +62,6 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } catch (e) {
-      print('Google Sign-in error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Google Sign-in failed: $e')),
       );
@@ -96,7 +86,6 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } on AuthException catch (e) {
-      print('AuthException: ${e.message}');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Login failed: ${e.message}')),
       );
@@ -110,37 +99,70 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
+      backgroundColor: const Color(0xFFF0F4F8),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          "Welcome Back",
+          style: TextStyle(color: Color(0xFF1A237E), fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Color(0xFF1A237E)),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
+            const Icon(Icons.lock_open_rounded, size: 80, color: Color(0xFF1A237E)),
+            const SizedBox(height: 30),
+            _buildTextField(
               controller: emailController,
-              decoration: const InputDecoration(labelText: "Email"),
+              label: 'Email',
+              icon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
             ),
-            TextField(
+            const SizedBox(height: 16),
+            _buildTextField(
               controller: passwordController,
+              label: 'Password',
+              icon: Icons.lock_outline,
               obscureText: true,
-              decoration: const InputDecoration(labelText: "Password"),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 24),
             ElevatedButton(
               onPressed: signIn,
-              child: const Text("Login"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A237E),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 8,
+              ),
+              child: const Text(
+                'Login',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                // TODO: Add your face login logic here
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Face login pressed (not implemented)')),
                 );
               },
-              child: const Text("Login with Face"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3949AB),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 6,
+              ),
+              child: const Text(
+                'Login with Face',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: signInWithGoogle,
               icon: Image.asset(
@@ -151,10 +173,13 @@ class _LoginPageState extends State<LoginPage> {
               label: const Text('Sign in with Google'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
+                foregroundColor: Colors.black87,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 6,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 20),
             TextButton(
               onPressed: () {
                 Navigator.push(
@@ -162,10 +187,35 @@ class _LoginPageState extends State<LoginPage> {
                   MaterialPageRoute(builder: (_) => const SignupPage()),
                 );
               },
-              child: const Text("Don't have an account? Sign up"),
+              child: const Text(
+                "Don't have an account? Sign up",
+                style: TextStyle(color: Color(0xFF1A237E), fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: const Color(0xFF1A237E)),
+        labelText: label,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
     );
   }
