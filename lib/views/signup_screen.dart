@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -11,21 +11,51 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final matriculeController = TextEditingController();
 
   Future<void> signUp() async {
-    final res = await SupabaseService.client.auth.signUp(
-      email: emailController.text,
-      password: passwordController.text,
-    );
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+    final matricule = matriculeController.text.trim();
 
-    if (res.user != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Signup successful! Check your email to verify.')),
+    try {
+
+      final response = await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
       );
-      Navigator.pop(context); // Go back to login
-    } else {
+
+      final userId = response.user?.id;
+      if (userId != null) {
+        final existingProfile = await Supabase.instance.client
+            .from('profiles')
+            .select()
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (existingProfile == null) {
+          await Supabase.instance.client.from('profiles').insert({
+            'id': userId,
+            'matricule': matricule,
+          });
+        } else {
+          print("**********Profile already exists.");
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Signup successful! Please verify your email.")),
+        );
+        Navigator.pop(context);
+      } else {
+        throw Exception("User not created.");
+      }
+    } on AuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${res.toString()}')),
+        SnackBar(content: Text("Signup failed: ${e.message}")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
       );
     }
   }
@@ -40,7 +70,12 @@ class _SignupPageState extends State<SignupPage> {
           children: [
             TextField(controller: emailController, decoration: const InputDecoration(labelText: "Email")),
             TextField(controller: passwordController, obscureText: true, decoration: const InputDecoration(labelText: "Password")),
-            ElevatedButton(onPressed: signUp, child: const Text("Sign Up")),
+            TextField(controller: matriculeController, decoration: const InputDecoration(labelText: "Matricule")),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: signUp,
+              child: const Text("Sign Up"),
+            ),
           ],
         ),
       ),
