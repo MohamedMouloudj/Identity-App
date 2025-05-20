@@ -6,7 +6,6 @@ class HomePage extends StatelessWidget {
 
   void _logout(BuildContext context) async {
     await Supabase.instance.client.auth.signOut();
-    // Navigate back to the login page (adjust route if needed)
     Navigator.pushReplacementNamed(context, '/login');
   }
 
@@ -15,8 +14,10 @@ class HomePage extends StatelessWidget {
     final user = Supabase.instance.client.auth.currentUser;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(
-        title: const Text('Home Page'),
+        backgroundColor: const Color(0xFF1A237E),
+        title: const Text('Home'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -25,19 +26,10 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      body: user == null
-          ? const Center(child: Text('No user found.'))
-          : Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Welcome!",
-                style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 20),
-            Text("Email: ${user.email}"),
-            Text("User ID: ${user.id}"),
-          ],
+      body: Center(
+        child: Text(
+          'Welcome, ${user?.email ?? 'User'}!',
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF1A237E)),
         ),
       ),
     );
