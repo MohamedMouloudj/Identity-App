@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:identity_app/services/g_ml_kit.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -62,8 +63,19 @@ class FaceAuthService {
   }
 
   Future<bool> matchFaces(XFile capturedFace, XFile storedFace) async {
-    // Placeholder - You would integrate real face matching here
-    return true; // Simulate success
+    final result = await FaceMatchingService.matchFaces(capturedFace, storedFace);
+
+    if (result['success']) {
+      if (result['isMatch']) {
+        print('Faces match with ${result['similarityScore']} confidence!');
+        return true;
+      } else {
+        print('Faces do not match: ${result['message']}');
+        return false;
+      }
+    } else {
+      throw Exception('Face matching failed: ${result['message']}');
+    }
   }
 
   Future<XFile?> downloadImageToFile(String url) async {

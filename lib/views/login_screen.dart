@@ -154,7 +154,10 @@ class _LoginPageState extends State<LoginPage> {
       );
       return;
     }
-
+    supabase.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
     Navigator.push(
       context,
       MaterialPageRoute(
