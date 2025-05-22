@@ -16,11 +16,6 @@ class HomePage extends StatelessWidget {
     if(user == null) {
       Navigator.pushReplacementNamed(context, '/login');
     }
-    final profile = supabase
-        .from('profiles')
-        .select()
-        .eq('id', user!.id)
-        .single();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F8),
@@ -45,7 +40,7 @@ class HomePage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Center(
           child: Text(
-            'Welcome, ${profile}!',
+            'Welcome, ${user!.email}!',
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF1A237E)),
           ),
         ),

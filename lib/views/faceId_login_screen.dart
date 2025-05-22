@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:identity_app/services/face_auth_service.dart';
+import 'package:identity_app/styles/snackbar_styles.dart';
 
 class FaceIdLoginScreen extends StatefulWidget {
   final String userId;
@@ -20,14 +21,20 @@ class _FaceIdLoginScreenState extends State<FaceIdLoginScreen> {
       _message = null;
     });
 
-    final success = await _faceService.loginWithFace(widget.userId);
-    if (success) {
-      setState(() => _message = 'Login successful.');
-      // Navigate to home or dashboard
-    } else {
-      setState(() => _message = 'Face login failed.');
+    try{
+      final success = await _faceService.loginWithFace(widget.userId);
+      if (success) {
+        setState(() => _message = 'Login successful.');
+        Navigator.pushReplacementNamed(context, "/home");
+      } else {
+        setState(() => _message = 'Face login failed.');
+      }
+    }catch(e){
+      showAppSnackBar(context,
+      "An error occurred during face login: $e"
+        ,type: SnackBarType.error,
+      );
     }
-
     setState(() => _loading = false);
   }
 

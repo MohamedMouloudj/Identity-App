@@ -27,6 +27,7 @@ dependencies:
 
   # ML Kit - Use specific packages instead of google_ml_kit
   google_mlkit_face_detection: ^0.12.0
+  # flutter_face_api: ^6.4.875
 
   # Media & Camera
   camera: ^0.10.5+5
@@ -56,6 +57,7 @@ flutter:
     - .env
     - assets/images/
     - assets/sounds/
+    - assets/regula.license
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
