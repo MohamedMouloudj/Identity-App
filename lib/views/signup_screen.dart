@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../styles/button_styles.dart';
 import '../styles/snackbar_styles.dart';
 import 'faceId_signup_screen.dart';
+import '../main.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -27,28 +28,28 @@ class _SignupPageState extends State<SignupPage> {
     }
 
     try {
-      final response = await Supabase.instance.client.auth.signUp(
+      final response = await supabase.auth.signUp(
         email: email,
         password: password,
       );
 
       final userId = response.user?.id;
       if (userId != null) {
-        final existingProfile = await Supabase.instance.client
+        final existingProfile = await supabase
             .from('profiles')
             .select()
             .eq('id', userId)
             .maybeSingle();
 
         if (existingProfile == null) {
-          await Supabase.instance.client.from('profiles').insert({
+          await supabase.from('profiles').insert({
             'id': userId,
             'username': username,
           });
         }else{
           final existingUsername = existingProfile['username'] as String? ?? '';
           if (existingUsername.isEmpty || existingUsername != username) {
-            await Supabase.instance.client.from('profiles')
+            await supabase.from('profiles')
                 .update({'username': username})
                 .eq('id', userId);
           }

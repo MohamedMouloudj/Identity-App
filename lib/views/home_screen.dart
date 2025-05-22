@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../main.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -11,10 +12,15 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
+    User? user = supabase.auth.currentSession?.user;
     if(user == null) {
       Navigator.pushReplacementNamed(context, '/login');
     }
+    final profile = supabase
+        .from('profiles')
+        .select()
+        .eq('id', user!.id)
+        .single();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F8),
@@ -39,7 +45,7 @@ class HomePage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Center(
           child: Text(
-            'Welcome, ${user?.email ?? 'User'}!',
+            'Welcome, ${profile}!',
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF1A237E)),
           ),
         ),
