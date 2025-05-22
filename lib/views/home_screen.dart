@@ -12,26 +12,38 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
+    if(user == null) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFF1A237E),
-        title: const Text('Home'),
+        title: const Text('Home',
+        style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          )
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white),
             tooltip: 'Logout',
             onPressed: () => _logout(context),
           ),
         ],
       ),
-      body: Center(
-        child: Text(
-          'Welcome, ${user?.email ?? 'User'}!',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF1A237E)),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: Text(
+            'Welcome, ${user?.email ?? 'User'}!',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF1A237E)),
+          ),
         ),
-      ),
+      )
     );
   }
 }
