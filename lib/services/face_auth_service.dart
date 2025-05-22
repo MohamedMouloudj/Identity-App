@@ -8,9 +8,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import '../main.dart';
 
 class FaceAuthService {
-  final supabase = Supabase.instance.client;
   final ImagePicker _picker = ImagePicker();
   final FaceDetector _faceDetector = FaceDetector(
     options: FaceDetectorOptions(
@@ -29,20 +29,20 @@ class FaceAuthService {
     return result.isGranted;
   }
 
-  Future<File?> captureFaceImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+  Future<XFile?> captureFaceImage() async {
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
     if (pickedFile == null) return null;
-    return File(pickedFile.path);
+    return pickedFile;
   }
 
-  Future<bool> validateSingleFace(File imageFile) async {
-    final inputImage = InputImage.fromFile(imageFile);
+  Future<bool> validateSingleFace(XFile imageFile) async {
+    final inputImage = InputImage.fromFile(File(imageFile.path));
     final faces = await _faceDetector.processImage(inputImage);
     return faces.length == 1;
   }
 
-  Future<String?> uploadFace(String userId, File imageFile) async {
-    final String filePath = 'user-faces/$userId/${DateTime.now().millisecondsSinceEpoch}.jpg';
+  Future<String?> uploadFace(String userId, XFile imageFile) async {
+    final String filePath = '$userId/${DateTime.now().millisecondsSinceEpoch}.jpg';
     final fileBytes = await imageFile.readAsBytes();
 
     try {
@@ -61,20 +61,21 @@ class FaceAuthService {
     return response['face_image_path'] as String?;
   }
 
-  Future<bool> matchFaces(File capturedFace, File storedFace) async {
+  Future<bool> matchFaces(XFile capturedFace, XFile storedFace) async {
     // Placeholder - You would integrate real face matching here
     return true; // Simulate success
   }
 
-  Future<File?> downloadImageToFile(String url) async {
+  Future<XFile?> downloadImageToFile(String url) async {
     final response = await HttpClient().getUrl(Uri.parse(url));
     final result = await response.close();
     final bytes = await consolidateHttpClientResponseBytes(result);
     final tempDir = await getTemporaryDirectory();
-    final filePath = p.join(tempDir.path, 'stored_face.jpg');
+    final fileName = 'stored_face_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final filePath = p.join(tempDir.path, fileName);
     final file = File(filePath);
     await file.writeAsBytes(bytes);
-    return file;
+    return XFile(file.path);
   }
 
   Future<bool> loginWithFace(String userId) async {

@@ -9,6 +9,8 @@ import 'package:audioplayers/audioplayers.dart';
 import '../styles/button_styles.dart';
 import '../styles/snackbar_styles.dart';
 import 'faceId_login_screen.dart';
+import '../main.dart';
+
 
 Future<void> playSuccessSound() async {
   try {
@@ -67,7 +69,7 @@ class _LoginPageState extends State<LoginPage> {
         throw Exception('Missing Google tokens');
       }
 
-      final res = await Supabase.instance.client.auth.signInWithIdToken(
+      final res = await supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
         accessToken: accessToken,
@@ -105,12 +107,20 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
-      final res = await SupabaseService.client.auth.signInWithPassword(
+      supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
-
-      if (res.session != null) {
+      Session? currentSession= supabase.auth.currentSession;
+      if (currentSession != null) {
+        final userData= await supabase
+            .from('profiles')
+            .select()
+            .eq('id', currentSession.user.id)
+            .maybeSingle();
+        if (userData == null) {
+          throw Exception("User not found.");
+        }
         await playSuccessSound();
         if (mounted) {
           showAppSnackBar(context, 'Login successful!', type: SnackBarType.success);
@@ -149,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
       context,
       MaterialPageRoute(
         builder: (_) => FaceIdLoginScreen(
-          userId: Supabase.instance.client.auth.currentUser?.id ?? '',
+          userId: supabase.auth.currentSession!.user.id,
         ),
       ),
     );
