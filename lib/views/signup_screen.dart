@@ -1,4 +1,6 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:identity_app/services/sounds_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../styles/button_styles.dart';
 import '../styles/snackbar_styles.dart';
@@ -23,7 +25,11 @@ class _SignupPageState extends State<SignupPage> {
     final username = usernameController.text.trim();
 
     if (!email.contains('@') || password.length < 6 || username.isEmpty) {
-      showAppSnackBar(context, "Please fill in all fields correctly.", type: SnackBarType.error);
+      showAppSnackBar(
+        context,
+        "Please fill in all fields correctly.",
+        type: SnackBarType.error,
+      );
       return;
     }
 
@@ -34,41 +40,55 @@ class _SignupPageState extends State<SignupPage> {
       );
 
       final userId = response.user?.id;
+      PostgrestMap? existingProfile;
       if (userId != null) {
-        final existingProfile = await supabase
-            .from('profiles')
-            .select()
-            .eq('id', userId)
-            .maybeSingle();
+        existingProfile =
+            await supabase
+                .from('profiles')
+                .select()
+                .eq('id', userId)
+                .maybeSingle();
 
         if (existingProfile == null) {
-          await supabase.from('profiles').insert({
-            'id': userId,
-            'username': username,
-          });
-        }else{
+          existingProfile =
+              await supabase
+                  .from('profiles')
+                  .insert({'id': userId, 'username': username, 'email': email})
+                  .select()
+                  .single();
+        } else {
           final existingUsername = existingProfile['username'] as String? ?? '';
           if (existingUsername.isEmpty || existingUsername != username) {
-            await supabase.from('profiles')
+            await supabase
+                .from('profiles')
                 .update({'username': username})
                 .eq('id', userId);
           }
         }
 
-        showAppSnackBar(context, "Signup successful! Please verify your email.",type:SnackBarType.success);
+        showAppSnackBar(
+          context,
+          "Signup successful! Please verify your email.",
+          type: SnackBarType.success,
+        );
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => FaceIdSignupScreen(userId: response.user!.id),
+            builder: (_) => FaceIdSignupScreen(user: existingProfile),
           ),
         );
+        await playSuccessSound();
       } else {
         throw Exception("User not created.");
       }
     } on AuthException catch (e) {
-      showAppSnackBar(context, "Signup failed: ${e.message}",type:SnackBarType.error);
+      showAppSnackBar(
+        context,
+        "Signup failed: ${e.message}",
+        type: SnackBarType.error,
+      );
     } catch (e) {
-      showAppSnackBar(context, "Error: $e",type: SnackBarType.error);
+      showAppSnackBar(context, "Error: $e", type: SnackBarType.error);
     }
   }
 
@@ -83,7 +103,10 @@ class _SignupPageState extends State<SignupPage> {
         elevation: 0,
         title: const Text(
           "Create an account",
-          style: TextStyle(color: Color(0xFF1A237E), fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color(0xFF1A237E),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFF1A237E)),
@@ -93,7 +116,11 @@ class _SignupPageState extends State<SignupPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.how_to_reg_rounded, size: 80, color: Color(0xFF1A237E)),
+            const Icon(
+              Icons.how_to_reg_rounded,
+              size: 80,
+              color: Color(0xFF1A237E),
+            ),
             const SizedBox(height: 30),
             /*----------------------------*/
             _buildTextField(
@@ -120,9 +147,7 @@ class _SignupPageState extends State<SignupPage> {
             ElevatedButton(
               onPressed: signUp,
               style: primaryButtonStyle(),
-              child: const Text(
-                'Sign Up',
-              ),
+              child: const Text('Sign Up'),
             ),
           ],
         ),
@@ -146,8 +171,14 @@ class _SignupPageState extends State<SignupPage> {
         labelText: label,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 18,
+          horizontal: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
       ),
     );
   }

@@ -2,24 +2,13 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:identity_app/services/sounds_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/supabase_service.dart';
 import 'signup_screen.dart';
-import 'package:audioplayers/audioplayers.dart';
 import '../styles/button_styles.dart';
 import '../styles/snackbar_styles.dart';
 import 'faceId_login_screen.dart';
 import '../main.dart';
-
-
-Future<void> playSuccessSound() async {
-  try {
-    final player = AudioPlayer();
-    await player.play(AssetSource('sounds/success.mp3'));
-  } catch (e) {
-    debugPrint('Error playing sound: $e');
-  }
-}
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -39,7 +28,8 @@ class _LoginPageState extends State<LoginPage> {
 
   String getFriendlyError(String message) {
     if (message.contains("invalid login")) return "Invalid email or password.";
-    if (message.contains("Email not confirmed")) return "Please verify your email before logging in.";
+    if (message.contains("Email not confirmed"))
+      return "Please verify your email before logging in.";
     return "An unexpected error occurred. Please try again: $message";
   }
 
@@ -78,13 +68,21 @@ class _LoginPageState extends State<LoginPage> {
       if (res.session != null) {
         await playSuccessSound();
         if (mounted) {
-          showAppSnackBar(context, 'Google Sign-in successful!', type: SnackBarType.success);
-          Navigator.pushReplacementNamed(context, '/home');
+          showAppSnackBar(
+            context,
+            'Google Sign-in successful!',
+            type: SnackBarType.success,
+          );
+          Navigator.pushReplacementNamed(context, '/home', arguments: res.user);
         }
       }
     } catch (e) {
       if (mounted) {
-        showAppSnackBar(context, 'Google Sign-in failed: $e', type: SnackBarType.error);
+        showAppSnackBar(
+          context,
+          'Google Sign-in failed: $e',
+          type: SnackBarType.error,
+        );
       }
     } finally {
       if (mounted) {
@@ -100,36 +98,46 @@ class _LoginPageState extends State<LoginPage> {
     final password = passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      showAppSnackBar(context, 'Please enter both email and password.', type: SnackBarType.error);
+      showAppSnackBar(
+        context,
+        'Please enter both email and password.',
+        type: SnackBarType.error,
+      );
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-      Session? currentSession= supabase.auth.currentSession;
+      supabase.auth.signInWithPassword(email: email, password: password);
+      Session? currentSession = supabase.auth.currentSession;
       if (currentSession != null) {
-        final userData= await supabase
-            .from('profiles')
-            .select()
-            .eq('id', currentSession.user.id)
-            .maybeSingle();
+        final userData =
+            await supabase
+                .from('profiles')
+                .select()
+                .eq('id', currentSession.user.id)
+                .maybeSingle();
         if (userData == null) {
           throw Exception("User not found.");
         }
-        await playSuccessSound();
         if (mounted) {
-          showAppSnackBar(context, 'Login successful!', type: SnackBarType.success);
-          Navigator.pushReplacementNamed(context, '/home');
+          await playSuccessSound();
+          showAppSnackBar(
+            context,
+            'Login successful!',
+            type: SnackBarType.success,
+          );
+          Navigator.pushReplacementNamed(context, '/home', arguments: userData);
         }
       }
     } on AuthException catch (e) {
       if (mounted) {
-        showAppSnackBar(context, getFriendlyError(e.message), type: SnackBarType.error);
+        showAppSnackBar(
+          context,
+          getFriendlyError(e.message),
+          type: SnackBarType.error,
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -142,29 +150,83 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _navigateToFaceIdLogin() {
+  Future<void> _navigateToFaceIdLogin() async {
     final email = emailController.text.trim();
-    final password = passwordController.text;
+    if (_isLoading) return;
 
-    if (email.isEmpty || password.isEmpty) {
+    // Validate email first
+    if (email.isEmpty || !email.contains('@')) {
       showAppSnackBar(
-          context,
-          'Please enter your email and password first for Face ID login.',
-          type: SnackBarType.info
+        context,
+        'Please enter a valid email address',
+        type: SnackBarType.error,
       );
       return;
     }
-    supabase.auth.signInWithPassword(
-      email: email,
-      password: password,
-    );
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FaceIdLoginScreen(
-          userId: supabase.auth.currentSession!.user.id,
-        ),
-      ),
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // First, check if user exists with this email
+      final userCheck =
+          await Supabase.instance.client
+              .from('profiles')
+              .select('*')
+              .eq('email', email)
+              .maybeSingle();
+      Future.delayed(const Duration(seconds: 1));
+
+      if (userCheck == null) {
+        _showErrorDialog('Failed to establish session. Please try again.');
+        throw Exception("No account found with this email address.");
+      }
+
+      if (mounted) {
+        await playSuccessSound();
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => FaceIdLoginScreen(user: userCheck)),
+        );
+      }
+    } on AuthException catch (e) {
+      _showErrorDialog('Authentication error: ${e.message}');
+    } catch (e) {
+      _showErrorDialog('An unexpected error occurred: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFFF8FAFC),
+          title: Text('Error'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'OK',
+                style: TextStyle(
+                  color: const Color(0xFF1A237E),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -184,7 +246,10 @@ class _LoginPageState extends State<LoginPage> {
         elevation: 0,
         title: const Text(
           "Welcome Back",
-          style: TextStyle(color: Color(0xFF1A237E), fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color(0xFF1A237E),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFF1A237E)),
@@ -194,7 +259,11 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.lock_open_rounded, size: 80, color: Color(0xFF1A237E)),
+            const Icon(
+              Icons.lock_open_rounded,
+              size: 80,
+              color: Color(0xFF1A237E),
+            ),
             const SizedBox(height: 30),
             _buildTextField(
               controller: emailController,
@@ -215,16 +284,19 @@ class _LoginPageState extends State<LoginPage> {
             ElevatedButton(
               onPressed: _isLoading ? null : signIn,
               style: primaryButtonStyle(),
-              child: _isLoading
-                  ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-                  : const Text('Login'),
+              child:
+                  _isLoading
+                      ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                      : const Text('Login'),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -248,21 +320,29 @@ class _LoginPageState extends State<LoginPage> {
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black87,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 elevation: 4,
               ),
             ),
             const SizedBox(height: 20),
             TextButton(
-              onPressed: _isLoading ? null : () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SignupPage()),
-                );
-              },
+              onPressed:
+                  _isLoading
+                      ? null
+                      : () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SignupPage()),
+                        );
+                      },
               child: const Text(
                 "Don't have an account? Sign up",
-                style: TextStyle(color: Color(0xFF1A237E), fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Color(0xFF1A237E),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -289,10 +369,13 @@ class _LoginPageState extends State<LoginPage> {
         labelText: label,
         filled: true,
         fillColor: enabled ? Colors.white : Colors.grey[100],
-        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 18,
+          horizontal: 16,
+        ),
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
       ),
     );
