@@ -33,6 +33,7 @@ class FaceAuthService {
   Future<XFile?> captureFaceImage() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.camera,
+      preferredCameraDevice: CameraDevice.rear,
     );
     if (pickedFile == null) return null;
     return pickedFile;
@@ -64,19 +65,18 @@ class FaceAuthService {
           .from('profiles')
           .update({
             'face_image_path': publicUrl,
-            'face_registered_at': DateTime.now().toUtc(),
+            'face_registered_at': DateTime.now().toIso8601String(),
           })
           .eq('id', userId);
       return publicUrl;
     } catch (e) {
       debugPrint('Upload error: $e');
-      return null;
+      throw Exception('Failed to upload image: $e');
     }
   }
 
   Future<String?> getStoredFaceUrl(String userId) async {
-    final response =
-        await supabase
+    final response = await supabase
             .from('profiles')
             .select('face_image_path')
             .eq('id', userId)
@@ -117,8 +117,9 @@ class FaceAuthService {
 
   Future<bool> loginWithFace(String userId) async {
     final capturedFace = await captureFaceImage();
-    if (capturedFace == null || !(await validateSingleFace(capturedFace)))
+    if (capturedFace == null || !(await validateSingleFace(capturedFace))) {
       return false;
+    }
 
     final url = await getStoredFaceUrl(userId);
     if (url == null) return false;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:identity_app/main.dart';
 import 'package:identity_app/services/face_auth_service.dart';
 import 'package:identity_app/styles/button_styles.dart';
+import 'package:identity_app/styles/snackbar_styles.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FaceIdSignupScreen extends StatefulWidget {
@@ -32,12 +33,24 @@ class _FaceIdSignupScreenState extends State<FaceIdSignupScreen> {
     final hasPermission = await _faceService.requestCameraPermission();
     if (!hasPermission) {
       setState(() => _message = 'Camera permission denied.');
+      setState(() => _loading = false);
+      showAppSnackBar(
+        context,
+        'Camera permission denied.',
+        type: SnackBarType.info,
+      );
       return;
     }
 
     final faceImage = await _faceService.captureFaceImage();
     if (faceImage == null) {
       setState(() => _message = 'Image capture cancelled.');
+      setState(() => _loading = false);
+      showAppSnackBar(
+        context,
+        'Image capture cancelled.',
+        type: SnackBarType.info,
+      );
       return;
     }
 
@@ -45,6 +58,12 @@ class _FaceIdSignupScreenState extends State<FaceIdSignupScreen> {
     if (!isValid) {
       setState(
         () => _message = 'Please ensure only one clear face is visible.',
+      );
+      setState(() => _loading = false);
+      showAppSnackBar(
+        context,
+        'Please ensure only one clear face is visible.',
+        type: SnackBarType.info,
       );
       return;
     }
@@ -55,11 +74,20 @@ class _FaceIdSignupScreenState extends State<FaceIdSignupScreen> {
     );
     if (uploadedUrl != null) {
       setState(() => _message = 'Face registered successfully.');
+      showAppSnackBar(
+        context,
+        "Face ID setup complete. You can now log in using Face ID.",
+        type: SnackBarType.success,
+      );
       Navigator.pushReplacementNamed(context, "/home", arguments: widget.user);
     } else {
       setState(() => _message = 'Failed to upload face image.');
+      showAppSnackBar(
+        context,
+        "Failed to upload face image. Please try again.",
+        type: SnackBarType.error,
+      );
     }
-
     setState(() => _loading = false);
   }
 
@@ -144,6 +172,7 @@ class _FaceIdSignupScreenState extends State<FaceIdSignupScreen> {
                         const SizedBox(height: 40),
                         Card(
                           elevation: 2,
+                          color: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
