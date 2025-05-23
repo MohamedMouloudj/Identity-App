@@ -31,7 +31,9 @@ class FaceAuthService {
   }
 
   Future<XFile?> captureFaceImage() async {
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.camera,
+    );
     if (pickedFile == null) return null;
     return pickedFile;
   }
@@ -43,13 +45,28 @@ class FaceAuthService {
   }
 
   Future<String?> uploadFace(String userId, XFile imageFile) async {
-    final String filePath = '$userId/${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final String filePath =
+        '$userId/${DateTime.now().millisecondsSinceEpoch}.jpg';
     final fileBytes = await imageFile.readAsBytes();
 
     try {
-      await supabase.storage.from('user-faces').uploadBinary(filePath, fileBytes, fileOptions: FileOptions(upsert: true));
-      final publicUrl = supabase.storage.from('user-faces').getPublicUrl(filePath);
-      await supabase.from('profiles').update({'face_image_path': publicUrl}).eq('id', userId);
+      await supabase.storage
+          .from('user-faces')
+          .uploadBinary(
+            filePath,
+            fileBytes,
+            fileOptions: FileOptions(upsert: true),
+          );
+      final publicUrl = supabase.storage
+          .from('user-faces')
+          .getPublicUrl(filePath);
+      await supabase
+          .from('profiles')
+          .update({
+            'face_image_path': publicUrl,
+            'face_registered_at': DateTime.now().toUtc(),
+          })
+          .eq('id', userId);
       return publicUrl;
     } catch (e) {
       debugPrint('Upload error: $e');
@@ -58,12 +75,20 @@ class FaceAuthService {
   }
 
   Future<String?> getStoredFaceUrl(String userId) async {
-    final response = await supabase.from('profiles').select('face_image_path').eq('id', userId).single();
+    final response =
+        await supabase
+            .from('profiles')
+            .select('face_image_path')
+            .eq('id', userId)
+            .single();
     return response['face_image_path'] as String?;
   }
 
   Future<bool> matchFaces(XFile capturedFace, XFile storedFace) async {
-    final result = await FaceMatchingService.matchFaces(capturedFace, storedFace);
+    final result = await FaceMatchingService.matchFaces(
+      capturedFace,
+      storedFace,
+    );
 
     if (result['success']) {
       if (result['isMatch']) {
@@ -92,7 +117,8 @@ class FaceAuthService {
 
   Future<bool> loginWithFace(String userId) async {
     final capturedFace = await captureFaceImage();
-    if (capturedFace == null || !(await validateSingleFace(capturedFace))) return false;
+    if (capturedFace == null || !(await validateSingleFace(capturedFace)))
+      return false;
 
     final url = await getStoredFaceUrl(userId);
     if (url == null) return false;

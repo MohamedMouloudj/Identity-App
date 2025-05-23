@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'views/login_screen.dart';
 import 'views/home_screen.dart';
-import 'styles/button_styles.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +30,10 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => LoginPage(),
-        '/home': (context) => const HomePage(),
+        '/home': (context) {
+          final userData = ModalRoute.of(context)?.settings.arguments;
+          return HomePage(userData: userData);
+        },
         '/login': (context) => LoginPage(),
         '/signup': (context) => const SignupPage(),
       },
