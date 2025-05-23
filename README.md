@@ -1,10 +1,9 @@
-# Flutter Auth App
+# Identity App
 
 A modern authentication app built with Flutter, featuring support for traditional email/password sign-in, Google authentication, and a custom email + Face ID flow.
 
 > ✅ This is my first **complete Flutter app**, combining Firebase-like backend power from Supabase with on-device machine learning using Google ML Kit.
 
----
 
 ## ✨ Features
 
