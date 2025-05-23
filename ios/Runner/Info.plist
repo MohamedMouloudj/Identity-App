@@ -54,6 +54,10 @@
         </array>
       </dict>
     </array>
+    <key>NSCameraUsageDescription</key>
+    <string>This app needs camera access for face authentication.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>This app uses Face ID for authentication.</string>
 
 </dict>
 </plist>

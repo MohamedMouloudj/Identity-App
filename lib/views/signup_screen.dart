@@ -1,5 +1,11 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:identity_app/services/sounds_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../styles/button_styles.dart';
+import '../styles/snackbar_styles.dart';
+import 'faceId_signup_screen.dart';
+import '../main.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -11,57 +17,78 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  final matriculeController = TextEditingController();
+  final usernameController = TextEditingController();
 
   Future<void> signUp() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
-    final matricule = matriculeController.text.trim();
+    final username = usernameController.text.trim();
+
+    if (!email.contains('@') || password.length < 6 || username.isEmpty) {
+      showAppSnackBar(
+        context,
+        "Please fill in all fields correctly.",
+        type: SnackBarType.error,
+      );
+      return;
+    }
 
     try {
-      final response = await Supabase.instance.client.auth.signUp(
+      final response = await supabase.auth.signUp(
         email: email,
         password: password,
       );
 
       final userId = response.user?.id;
-      print("***** user id ${userId}");
+      PostgrestMap? existingProfile;
       if (userId != null) {
-        final existingProfile = await Supabase.instance.client
-            .from('profiles')
-            .select()
-            .eq('id', userId)
-            .maybeSingle();
+        existingProfile =
+            await supabase
+                .from('profiles')
+                .select()
+                .eq('id', userId)
+                .maybeSingle();
 
         if (existingProfile == null) {
-          await Supabase.instance.client.from('profiles').insert({
-            'id': userId,
-            'matricule': matricule,
-          });
-        }else{
-          final existingMatricule = existingProfile['matricule'] as String? ?? '';
-          if (existingMatricule.isEmpty || existingMatricule != matricule) {
-            await Supabase.instance.client.from('profiles')
-                .update({'matricule': matricule})
+          existingProfile =
+              await supabase
+                  .from('profiles')
+                  .insert({'id': userId, 'username': username, 'email': email})
+                  .select()
+                  .single();
+        } else {
+          final existingUsername = existingProfile['username'] as String? ?? '';
+          if (existingUsername.isEmpty || existingUsername != username) {
+            await supabase
+                .from('profiles')
+                .update({'username': username})
                 .eq('id', userId);
           }
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Signup successful! Please verify your email.")),
+        showAppSnackBar(
+          context,
+          "Signup successful! Please verify your email.",
+          type: SnackBarType.success,
         );
-        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FaceIdSignupScreen(user: existingProfile),
+          ),
+        );
+        await playSuccessSound();
       } else {
         throw Exception("User not created.");
       }
     } on AuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Signup failed: ${e.message}")),
+      showAppSnackBar(
+        context,
+        "Signup failed: ${e.message}",
+        type: SnackBarType.error,
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      showAppSnackBar(context, "Error: $e", type: SnackBarType.error);
     }
   }
 
@@ -71,11 +98,15 @@ class _SignupPageState extends State<SignupPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
-          "Create Account",
-          style: TextStyle(color: Color(0xFF1A237E), fontWeight: FontWeight.bold),
+          "Create an account",
+          style: TextStyle(
+            color: Color(0xFF1A237E),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFF1A237E)),
@@ -85,8 +116,20 @@ class _SignupPageState extends State<SignupPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.app_registration_rounded, size: 80, color: Color(0xFF1A237E)),
+            const Icon(
+              Icons.how_to_reg_rounded,
+              size: 80,
+              color: Color(0xFF1A237E),
+            ),
             const SizedBox(height: 30),
+            /*----------------------------*/
+            _buildTextField(
+              controller: usernameController,
+              label: 'Username',
+              icon: Icons.person,
+              keyboardType: TextInputType.name,
+            ),
+            const SizedBox(height: 16),
             _buildTextField(
               controller: emailController,
               label: 'Email',
@@ -100,26 +143,11 @@ class _SignupPageState extends State<SignupPage> {
               icon: Icons.lock_outline,
               obscureText: true,
             ),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: matriculeController,
-              label: 'Matricule',
-              icon: Icons.badge_outlined,
-            ),
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: signUp,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A237E),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                shadowColor: Colors.deepPurpleAccent.withOpacity(0.5),
-                elevation: 8,
-              ),
-              child: const Text(
-                'Sign Up',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
-              ),
+              style: primaryButtonStyle(),
+              child: const Text('Sign Up'),
             ),
           ],
         ),
@@ -143,8 +171,14 @@ class _SignupPageState extends State<SignupPage> {
         labelText: label,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 18,
+          horizontal: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
       ),
     );
   }
